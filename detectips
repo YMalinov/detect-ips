@@ -1,0 +1,41 @@
+#!/bin/bash
+DEFAULT_START_IP=1
+DEFAULT_END_IP=254
+DEFAULT_ROOT_ADDRESS="192.168.1"
+
+START_IP=$DEFAULT_START_IP
+END_IP=$DEFAULT_END_IP
+ROOT_ADDRESS=$DEFAULT_ROOT_ADDRESS
+
+
+detect() {
+	for ip in $(seq $START_IP $END_IP)
+	do
+		ping -c 1 $ROOT_ADDRESS.$ip>/dev/null
+		[ $? -eq 0 ] && echo "$ROOT_ADDRESS.$ip UP" || :
+	done
+}
+
+while getopts ":s:e:r:" opt
+do
+	case $opt in
+		s)
+			START_IP=$OPTARG;;
+		e)
+			END_IP=$OPTARG;;
+		r)
+			ROOT_IP=$OPTARG;;
+		*)
+			echo "one or more invalid arguments"
+			exit 1;;
+        esac
+done
+
+if [ $START_IP -gt $END_IP ]
+then
+	echo "start IP should be smaller than end IP"
+	exit 1
+fi
+
+echo "detecting IPs from $ROOT_ADDRESS.$START_IP to $ROOT_ADDRESS.$END_IP..."
+detect
