@@ -2,21 +2,41 @@
 DEFAULT_START_IP=1
 DEFAULT_END_IP=254
 DEFAULT_ROOT_ADDRESS="192.168.1"
+DEFAULT_INTERFACE="eth0"
 
 START_IP=$DEFAULT_START_IP
 END_IP=$DEFAULT_END_IP
 ROOT_ADDRESS=$DEFAULT_ROOT_ADDRESS
+INTERFACE=$DEFAULT_INTERFACE
 
+APRING=false
 
-detect() {
+detectwithping() {
 	for ip in $(seq $START_IP $END_IP)
 	do
-		ping -c 1 $ROOT_ADDRESS.$ip>/dev/null
-		[ $? -eq 0 ] && echo "$ROOT_ADDRESS.$ip UP" || :
+		CURRENT_IP="$ROOT_ADDRESS.$ip"
+		ping -c 1 -I $INTERFACE $CURRENT_IP > /dev/null
+
+		if [ $? -eq 0 ]
+		then
+			 echo "$CURRENT_IP UP"
+		fi
 	done
 }
 
-while getopts ":s:e:r:" opt
+detectwitharping() {
+	for ip in $(seq $START_IP $END_IP)
+        do
+                CURRENT_IP="$ROOT_ADDRESS.$ip"
+                arping -I $INTERFACE -f -c 2 $CURRENT_IP > /dev/null
+                if [ $? -eq 0 ]
+                then
+                        echo "$CURRENT_IP UP"
+                fi
+        done
+}
+
+while getopts ":s:e:r:a" opt
 do
 	case $opt in
 		s)
@@ -25,6 +45,8 @@ do
 			END_IP=$OPTARG;;
 		r)
 			ROOT_IP=$OPTARG;;
+		a)
+			ARPING=true;;
 		*)
 			echo "one or more invalid arguments"
 			exit 1;;
@@ -38,4 +60,16 @@ then
 fi
 
 echo "detecting IPs from $ROOT_ADDRESS.$START_IP to $ROOT_ADDRESS.$END_IP..."
-detect
+
+if [ "$ARPING" = "true" ]
+then
+	if [ $UID != 0 ]
+	then
+		echo "Run with sudo if you want arping. Using regular ping instead..."
+		detectwithping
+	else
+		detectwitharping
+	fi
+else
+	detectwithping
+fi
